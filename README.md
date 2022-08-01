@@ -1,1 +1,1 @@
-# ngnews
+# NCKU_practice_Maggi
