@@ -1,4 +1,4 @@
-# In[] https://sfhsu29.medium.com/nlp-%E5%B0%88%E6%AC%84-1-2-%E5%A6%82%E4%BD%95%E8%A8%93%E7%B7%B4%E8%87%AA%E5%B7%B1%E7%9A%84-word2vec-5a0754c5cb09
+# In[]
 import logging # 使用 logging 追蹤進度
 import time
 from gensim.corpora import WikiCorpus
@@ -20,15 +20,17 @@ logging.info("Finished preprocessed data in {} seconds".format(time.time() - sta
 # %%
 import multiprocessing
 import logging
-from gensim.models import Word2Vec
+from gensim.models import Word2Vec, KeyedVectors
 from gensim.models.word2vec import LineSentence
 logging.basicConfig(format='%(asctime)s: %(levelname)s: %(message)s')
 logging.root.setLevel(level=logging.INFO)
 input_text_path = 'enwiki-20220801-pages-articles-multistream.txt'
-output_model_path = 'wiki-lemma-100D'
+# output_model_path = 'wiki-lemma-100D'
 sentences = LineSentence(input_text_path) # 將剛剛寫的檔案轉換成 iterable
-model = Word2Vec(sentences, vector_size=100, window=5, min_count=5,
-                 workers=multiprocessing.cpu_count())  # 可以自行實驗 size = 100, size = 300，再依照你的case來做調整。
+model = Word2Vec(sentences, vector_size=100, window=5, min_count=5)  # 可以自行實驗 size = 100, size = 300，再依照你的case來做調整。
 # 將 Model 存到 wiki-lemma-100D，他還會一併儲存兩個trainables.syn1neg.npy結尾和wv.vectors.npy結尾的文件
-model.save(output_model_path) 
+model.wv.save_word2vec_format('wiki.txt', 'binary=False') 
+
+# In[]
+print(model.wv['sentence'])
 # %%
