@@ -62,9 +62,9 @@ X_train = keras.preprocessing.sequence.pad_sequences(X_train, maxlen=maxlen)
 x_test = keras.preprocessing.sequence.pad_sequences(x_test, maxlen=maxlen)
 
 # In[]
-embed_dim = 32  # 嵌入向量總長度
+embed_dim = 100  # 嵌入向量總長度
 num_heads = 2  # Number of attention heads
-ff_dim = 32  # Hidden layer size in feed forward network inside transformer
+ff_dim = 100  # Hidden layer size in feed forward network inside transformer
 
 inputs = layers.Input(shape=(maxlen,))
 embedding_layer = TokenAndPositionEmbedding(maxlen, vocab_size, embed_dim)
