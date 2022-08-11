@@ -81,7 +81,7 @@ y_train = labels_train[indices]
 from keras.models import Sequential
 from keras.layers import Embedding, Flatten, Dense
 
-embedding_dim = 50
+embedding_dim = 100
 
 model = Sequential()
 model.add(Embedding(vocab_size, embedding_dim, input_length=maxlen))
@@ -90,11 +90,18 @@ model.add(Dense(32, activation='relu'))
 model.add(Dense(1, activation='sigmoid'))
 model.summary()
 # %%
-model.compile(optimizer='adam',
-              loss='binary_crossentropy',
-              metrics=['acc'])
-history = model.fit(X_train, y_train,
-                    epochs=10,
-                    batch_size=32,
-                    validation_data=0.2)
-# %%
+model.compile(optimizer="adam", loss="binary_crossentropy", metrics=["accuracy"])
+history=model.fit(X_train,y_train, batch_size=16, epochs=10, validation_split=0.2)
+# In[]
+history.history
+scores = model.evaluate(X_test, y_test)
+print("\n%s: %.2f%%" % (model.metrics_names[1], scores[1]*100))
+# In[]
+prediction = model.predict(X_test)
+# In[]
+import sklearn
+from sklearn.metrics import confusion_matrix, precision_score, recall_score, accuracy_score
+from tensorflow.keras.utils import plot_model
+
+print(sklearn.metrics.confusion_matrix(y_test,np.argmax(prediction, axis = 1), labels=None, sample_weight=None))
+print(sklearn.metrics.classification_report (y_test, np.argmax(prediction, axis = 1)))
