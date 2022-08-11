@@ -79,7 +79,10 @@ outputs = layers.Dense(4, activation="softmax")(x)
 
 model = keras.Model(inputs=inputs, outputs=outputs)
 model.summary()
-
+# In[]
+# Shuffle the data
+np.random.seed(42)
+tf.random.set_seed(42)
 # In[]
 model.compile(optimizer="adam", loss="categorical_crossentropy", metrics=["accuracy"])
 history=model.fit(X_train, y_train, batch_size=512, epochs=10, validation_split=0.2)
@@ -99,7 +102,6 @@ for i in range(10,40,4):
 
 # In[]
 from sklearn.metrics import confusion_matrix, precision_score, recall_score, accuracy_score
-from mlxtend.plotting import plot_confusion_matrix
 from tensorflow.keras.utils import plot_model
 
 y_test_arg=np.argmax(y_test,axis=1)
