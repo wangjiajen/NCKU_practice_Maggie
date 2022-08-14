@@ -17,15 +17,24 @@ from tensorflow.keras.preprocessing.sequence import pad_sequences
 from tensorflow.keras.callbacks import ModelCheckpoint, EarlyStopping
 from tensorflow.keras.utils import plot_model
 # %%
+import os
+os.environ["CUDA_VISIBLE_DEVICES"] = "0"
+# %%
 class TransformerBlock(layers.Layer): # Transformer的Encoder端，Transformer block塊
-    def __init__(self, embed_dim, num_heads, ff_dim, rate=0.1):
-        super().__init__()
-        self.att=layers.MultiHeadAttention(num_heads=num_heads, key_dim=embed_dim)
-        self.ffn=keras.Sequential([layers.Dense(ff_dim, activation="relu"), layers.Dense(embed_dim),])
-        self.layernorm1=layers.LayerNormalization(epsilon=1e-6)
-        self.layernorm2=layers.LayerNormalization(epsilon=1e-6)
-        self.dropout1=layers.Dropout(rate)
-        self.dropout2=layers.Dropout(rate)       
+    def __init__(self, embed_dim, num_heads, ff_dim, rate=0.1, **kwargs):
+      super(TransformerBlock, self).__init__()
+      self.embed_dim = embed_dim
+      self.num_heads = num_heads
+      self.ff_dim = ff_dim
+      self.rate = rate
+      self.att = layers.MultiHeadAttention(num_heads=num_heads, key_dim=embed_dim)
+      self.ffn = keras.Sequential(
+        [layers.Dense(ff_dim, activation="relu"), layers.Dense(embed_dim),]
+      )
+      self.layernorm1 = layers.LayerNormalization(epsilon=1e-6)
+      self.layernorm2 = layers.LayerNormalization(epsilon=1e-6)
+      self.dropout1 = layers.Dropout(rate)
+      self.dropout2 = layers.Dropout(rate)       
     def call(self, inputs, training):
         attn_output=self.att(inputs, inputs)
         attn_output=self.dropout1(attn_output, training=training)
@@ -33,6 +42,14 @@ class TransformerBlock(layers.Layer): # Transformer的Encoder端，Transformer b
         ffn_output=self.ffn(out1)
         ffn_output=self.dropout2(ffn_output, training=training)
         return self.layernorm2(out1 + ffn_output)
+
+    def get_config(self):
+     config = super().get_config().copy()
+     config.update({'embed_dim':self.embed_dim,
+          'num_heads':self.num_heads,
+          'ff_dim':self.ff_dim,
+          'rate':self.rate})
+     return config
 # %%
 data = pd.read_csv('/home/u108029050/m/train.csv')
 testdata = pd.read_csv('/home/u108029050/m/test.csv')
@@ -124,8 +141,11 @@ for word, i in word_index.items():
             embedding_matrix[i] = embedding_vector         
 # %%
 class TokenAndPositionEmbedding(layers.Layer):
-    def __init__(self, maxlen, max_words, embed_dim):
+    def __init__(self, maxlen, vocab_size, embed_dim, **kwargs):
         super(TokenAndPositionEmbedding, self).__init__()
+        self.maxlen = maxlen
+        self.vocab_size = vocab_size
+        self.embed_dim = embed_dim
         self.token_emb=layers.Embedding(input_dim=max_words, output_dim=embed_dim,weights=[embedding_matrix],trainable=False)
         self.pos_emb=layers.Embedding(input_dim=maxlen, output_dim=embed_dim)
     def call(self, x):
@@ -134,6 +154,14 @@ class TokenAndPositionEmbedding(layers.Layer):
         positions=self.pos_emb(positions)
         x=self.token_emb(x)
         return x + positions
+    def get_config(self):
+      config = super().get_config().copy()
+      config.update({
+        'maxlen': self.maxlen,
+        'vocab_size': self.vocab_size,
+        'embed_dim': self.embed_dim
+       })
+      return config
 # %%
 embed_dim = 100  # 嵌入向量總長度
 num_heads = 2  # Number of attention heads
@@ -165,9 +193,17 @@ np.random.seed(42)
 tf.random.set_seed(42)
 # %%
 model.compile(optimizer="adam", loss='sparse_categorical_crossentropy', metrics=["accuracy"])
-history=model.fit(X_train, y_train, batch_size=512, epochs=10, validation_data=(X_val, y_val))
+EPOCHS = 10
+filepath="transformer_agnews_wiki_em.best.hdf5"
+checkpoint= tf.keras.callbacks.ModelCheckpoint(
+     filepath,
+     monitor='val_loss',
+     mode='min',
+     verbose=1,
+     save_best_only=True)
+callbacks_list = [checkpoint]
+model.fit(X_train, y_train, batch_size=512, epochs=EPOCHS, validation_data=(X_val, y_val), callbacks=callbacks_list)
 # %%
-history.history
 scores = model.evaluate(X_test, y_test)
 print("\n%s: %.2f%%" % (model.metrics_names[1], scores[1]*100))
 # %%
@@ -187,4 +223,6 @@ print(confusion_matrix(y_test_arg, Y_pred)) #y軸事實 x軸預測
 # %%
 from sklearn.metrics import classification_report
 print(classification_report(y_test_arg, Y_pred)) 
-# %%
+# model.load_weights("weights.best.hdf5")
+# model.compile(optimizer="adam", loss='sparse_categorical_crossentropy', metrics=["accuracy"])
+# scores = model.evaluate(X_test, y_test)
