@@ -16,7 +16,6 @@ from tensorflow.keras.preprocessing.text import Tokenizer
 from tensorflow.keras.preprocessing.sequence import pad_sequences
 from tensorflow.keras.callbacks import ModelCheckpoint, EarlyStopping
 from tensorflow.keras.utils import plot_model
-from tensorflow.keras.utils import to_categorical
 # %%
 class TransformerBlock(layers.Layer): # Transformer的Encoder端，Transformer block塊
     def __init__(self, embed_dim, num_heads, ff_dim, rate=0.1):
@@ -26,8 +25,7 @@ class TransformerBlock(layers.Layer): # Transformer的Encoder端，Transformer b
         self.layernorm1=layers.LayerNormalization(epsilon=1e-6)
         self.layernorm2=layers.LayerNormalization(epsilon=1e-6)
         self.dropout1=layers.Dropout(rate)
-        self.dropout2=layers.Dropout(rate)
-        
+        self.dropout2=layers.Dropout(rate)       
     def call(self, inputs, training):
         attn_output=self.att(inputs, inputs)
         attn_output=self.dropout1(attn_output, training=training)
@@ -36,9 +34,6 @@ class TransformerBlock(layers.Layer): # Transformer的Encoder端，Transformer b
         ffn_output=self.dropout2(ffn_output, training=training)
         return self.layernorm2(out1 + ffn_output)
 # %%
-np.random.seed(42)
-tf.random.set_seed(42) 
-
 data = pd.read_csv('/home/u108029050/m/train.csv')
 testdata = pd.read_csv('/home/u108029050/m/test.csv')
 
@@ -54,41 +49,53 @@ testdata = testdata.drop(columns=['Title', 'Description'])
 
 
 #Combine Title and Description
-X_train = data['summary'] # Combine title and description (better accuracy than using them as separate features)
-y_train = data['ClassIndex'].apply(lambda x: x-1).values # Class labels need to begin from 0
-x_test = testdata['summary'] # Combine title and description (better accuracy than using them as separate features)
-y_test = testdata['ClassIndex'].apply(lambda x: x-1).values # Class labels need to begin from 0
+X_data = data['summary'] # Combine title and description (better accuracy than using them as separate features)
+y_data = data['ClassIndex'].apply(lambda x: x-1).values # Class labels need to begin from 0
+x_testdata = testdata['summary'] # Combine title and description (better accuracy than using them as separate features)
+y_testdata = testdata['ClassIndex'].apply(lambda x: x-1).values # Class labels need to begin from 0
 
 #Max Length of sentences in Train Dataset
-maxlen = X_train.map(lambda x: len(x.split())).max()
+maxlen = X_data.map(lambda x: len(x.split())).max()
 data.head()
 
 # %%
-data.shape, testdata.shape
-# %%
-y_train = to_categorical(y_train,4)
-y_test = to_categorical(y_test,4)
-# %%
+# y_train = to_categorical(y_train,4)
+# y_test = to_categorical(y_test,4)
 max_words = 10000 # 僅考慮資料集中的前10000個單詞
 maxlen = 100 # 100個文字後切斷評論
 # Create and Fit tokenizer
 
 tok = Tokenizer(num_words=max_words) # 實例化一個只考慮最常用10000詞的分詞器
-tok.fit_on_texts(X_train.values) # 建構單詞索引
+tok.fit_on_texts(X_data.values) # 建構單詞索引
 # vocab_size = len(tok.word_index) + 1
 
 # 將文字轉成整數list的序列資料
-X_train = tok.texts_to_sequences(X_train)
-x_test = tok.texts_to_sequences(x_test)
+X_data = tok.texts_to_sequences(X_data)
+x_testdata = tok.texts_to_sequences(x_testdata)
 
 # Pad data
-X_train = keras.preprocessing.sequence.pad_sequences(X_train, maxlen=maxlen)
-x_test = keras.preprocessing.sequence.pad_sequences(x_test, maxlen=maxlen)
+X_data = keras.preprocessing.sequence.pad_sequences(X_data, maxlen=maxlen)
+x_testdata = keras.preprocessing.sequence.pad_sequences(x_testdata, maxlen=maxlen)
 
 word_index = tok.word_index #單詞和數字的字典
 print('Found %s unique tokens' % len(word_index))
 # print(len(X_train), "Training sequences")
 # print(len(x_test), "Validation sequences")
+# %%
+print(X_data.shape)
+print(x_testdata.shape)
+
+# %%
+training_samples = 96000  # We will be training on 10K samples
+validation_samples = 24000  # We will be validating on 10000 samples
+testing_samples=7600
+# Split data
+X_train = X_data[:training_samples]
+y_train = y_data[:training_samples]
+X_val = X_data[training_samples: training_samples + validation_samples]
+y_val = y_data[training_samples: training_samples + validation_samples]
+X_test =x_testdata[:testing_samples]
+y_test =y_testdata[:testing_samples]
 # %%
 import os
 embedding_index = {}
@@ -149,20 +156,22 @@ model.summary()
 print(X_train.shape)
 print(y_train.shape)
 print(y_test.shape)
-print(x_test.shape)
+print(X_test.shape)
+print(X_val.shape)
+print(y_val.shape)
 # %%
 # Shuffle the data
 np.random.seed(42)
 tf.random.set_seed(42)
 # %%
-model.compile(optimizer="adam", loss='categorical_crossentropy', metrics=["accuracy"])
-history=model.fit(X_train, y_train, batch_size=512, epochs=10, validation_split=0.2)
+model.compile(optimizer="adam", loss='sparse_categorical_crossentropy', metrics=["accuracy"])
+history=model.fit(X_train, y_train, batch_size=512, epochs=10, validation_data=(X_val, y_val))
 # %%
 history.history
-scores = model.evaluate(x_test, y_test)
+scores = model.evaluate(X_test, y_test)
 print("\n%s: %.2f%%" % (model.metrics_names[1], scores[1]*100))
 # %%
-prediction = model.predict(x_test)
+prediction = model.predict(X_test)
 labels = ['World News', 'Sports News', 'Business News', 'Science-Technology News']
 for i in range(10,40,4):
     print(testdata['summary'].iloc[i][:50], "...")
