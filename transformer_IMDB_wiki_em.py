@@ -152,7 +152,7 @@ x = layers.GlobalAveragePooling1D()(x)
 x = layers.Dropout(0.1)(x)
 x = layers.Dense(20, activation="relu")(x)
 x = layers.Dropout(0.1)(x)
-outputs = layers.Dense(4, activation="softmax")(x)
+outputs = layers.Dense(2, activation="sigmoid")(x)
 
 model = keras.Model(inputs=inputs, outputs=outputs)
 model.summary()
