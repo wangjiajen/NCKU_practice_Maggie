@@ -1,4 +1,5 @@
 # In[]
+import os
 import pandas as pd
 import numpy as np
 
@@ -31,36 +32,45 @@ testdata['summary'] = testdata['Title'] + ' ' + testdata['Description']
 data = data.drop(columns=['Title', 'Description'])
 testdata = testdata.drop(columns=['Title', 'Description'])
 #Combine Title and Description
-X_train = data['summary'] # Combine title and description (better accuracy than using them as separate features)
-y_train = data['ClassIndex'].apply(lambda x: x-1).values # Class labels need to begin from 0
-x_test = testdata['summary'] # Combine title and description (better accuracy than using them as separate features)
-y_test = testdata['ClassIndex'].apply(lambda x: x-1).values # Class labels need to begin from 0
+X_data = data['summary'] # Combine title and description (better accuracy than using them as separate features)
+y_data = data['ClassIndex'].apply(lambda x: x-1).values # Class labels need to begin from 0
+x_testdata = testdata['summary'] # Combine title and description (better accuracy than using them as separate features)
+y_testdata = testdata['ClassIndex'].apply(lambda x: x-1).values # Class labels need to begin from 0
 
 #Max Length of sentences in Train Dataset
-maxlen = X_train.map(lambda x: len(x.split())).max()
+maxlen = X_data.map(lambda x: len(x.split())).max()
 data.head()
 
 # In[]
-data.shape, testdata.shape
-
-# In[]
-y_train = to_categorical(y_train,4)
-y_test = to_categorical(y_test,4)
-
-# In[]
 vocab_size = 10000 # arbitrarily chosen
+maxlen = 100
 # Create and Fit tokenizer
 tok = Tokenizer(num_words=vocab_size)
-tok.fit_on_texts(X_train.values)
+tok.fit_on_texts(X_data.values)
 
 # Tokenize data
-X_train = tok.texts_to_sequences(X_train)
-x_test = tok.texts_to_sequences(x_test)
+X_data = tok.texts_to_sequences(X_data)
+x_testdata = tok.texts_to_sequences(x_testdata)
 
 # Pad data
-X_train = keras.preprocessing.sequence.pad_sequences(X_train, maxlen=maxlen)
-x_test = keras.preprocessing.sequence.pad_sequences(x_test, maxlen=maxlen)
+X_train = keras.preprocessing.sequence.pad_sequences(X_data, maxlen=maxlen)
+x_test = keras.preprocessing.sequence.pad_sequences(x_testdata, maxlen=maxlen)
 
+# %%
+print(X_data.shape)
+print(x_testdata.shape)
+
+# %%
+training_samples = 96000  # We will be training on 10K samples
+validation_samples = 24000  # We will be validating on 10000 samples
+testing_samples=7600
+# Split data
+X_train = X_data[:training_samples]
+y_train = y_data[:training_samples]
+X_val = X_data[training_samples: training_samples + validation_samples]
+y_val = y_data[training_samples: training_samples + validation_samples]
+X_test =x_testdata[:testing_samples]
+y_test =y_testdata[:testing_samples]
 # In[]
 embed_dim = 100  # 嵌入向量總長度
 num_heads = 2  # Number of attention heads
@@ -79,6 +89,13 @@ outputs = layers.Dense(4, activation="softmax")(x)
 
 model = keras.Model(inputs=inputs, outputs=outputs)
 model.summary()
+# In[]
+print(X_train.shape)
+print(y_train.shape)
+print(y_test.shape)
+print(X_test.shape)
+print(X_val.shape)
+print(y_val.shape)
 # In[]
 # Shuffle the data
 np.random.seed(42)
