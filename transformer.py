@@ -3,8 +3,12 @@ from tensorflow import keras
 from keras import layers
 
 class TransformerBlock(layers.Layer): # Transformer的Encoder端，Transformer block塊
-    def __init__(self, embed_dim, num_heads, ff_dim, rate=0.1):
-        super().__init__()
+    def __init__(self, embed_dim, num_heads, ff_dim, rate=0.1, **kwargs):
+        super(TransformerBlock, self).__init__()
+        self.embed_dim = embed_dim
+        self.num_heads = num_heads
+        self.ff_dim = ff_dim
+        self.rate = rate
         self.att=layers.MultiHeadAttention(num_heads=num_heads, key_dim=embed_dim)
         self.ffn=keras.Sequential([layers.Dense(ff_dim, activation="relu"), layers.Dense(embed_dim),])
         self.layernorm1=layers.LayerNormalization(epsilon=1e-6)
@@ -18,10 +22,21 @@ class TransformerBlock(layers.Layer): # Transformer的Encoder端，Transformer b
         ffn_output=self.ffn(out1)
         ffn_output=self.dropout2(ffn_output, training=training)
         return self.layernorm2(out1 + ffn_output)
+    def get_config(self):
+        config = super().get_config().copy()
+        config.update({'embed_dim':self.embed_dim,
+        'num_heads':self.num_heads,
+        'ff_dim':self.ff_dim,
+        'rate':self.rate})
+        return config
+    
 
 class TokenAndPositionEmbedding(layers.Layer):
-    def __init__(self, maxlen, vocab_size, embed_dim):
+    def __init__(self, maxlen, vocab_size, embed_dim, **kwargs):
         super(TokenAndPositionEmbedding, self).__init__()
+        self.maxlen = maxlen
+        self.vocab_size = vocab_size
+        self.embed_dim = embed_dim
         self.token_emb=layers.Embedding(input_dim=vocab_size, output_dim=embed_dim)
         self.pos_emb=layers.Embedding(input_dim=maxlen, output_dim=embed_dim)
     def call(self, x):
@@ -30,3 +45,10 @@ class TokenAndPositionEmbedding(layers.Layer):
         positions=self.pos_emb(positions)
         x=self.token_emb(x)
         return x + positions
+    def get_config(self):
+        config = super().get_config().copy()
+        config.update({
+        'maxlen': self.maxlen,
+        'vocab_size': self.vocab_size,
+        'embed_dim': self.embed_dim})
+        return config
