@@ -18,7 +18,15 @@ from tensorflow.keras.callbacks import ModelCheckpoint, EarlyStopping
 from tensorflow.keras.utils import plot_model
 # %%
 import os
-os.environ["CUDA_VISIBLE_DEVICES"] = "0"
+os.environ["CUDA_VISIBLE_DEVICES"] = "1"
+
+# gpus = tf.config.experimental.list_physical_devices('GPU')
+# if gpus:
+#   try:
+#     tf.config.experimental.set_virtual_device_configuration(gpus[0], [tf.config.experimental.VirtualDeviceConfiguration(memory_limit=6144)])
+#   except RuntimeError as e:
+#     print(e)
+
 # %%
 class TransformerBlock(layers.Layer): # Transformer的Encoder端，Transformer block塊
     def __init__(self, embed_dim, num_heads, ff_dim, rate=0.1, **kwargs):
@@ -204,6 +212,7 @@ checkpoint= tf.keras.callbacks.ModelCheckpoint(
 callbacks_list = [checkpoint]
 model.fit(X_train, y_train, batch_size=512, epochs=EPOCHS, validation_data=(X_val, y_val), callbacks=callbacks_list)
 # %%
+model.load_weights("transformer_agnews_wiki_em.best.hdf5")
 scores = model.evaluate(X_test, y_test)
 print("\n%s: %.2f%%" % (model.metrics_names[1], scores[1]*100))
 # %%
@@ -214,15 +223,17 @@ for i in range(10,40,4):
     print("Actual category: ", labels[np.argmax(y_test[i])])
     print("predicted category: ",labels[np.argmax(prediction[i])])
 # %%
+import sklearn
 from sklearn.metrics import confusion_matrix, precision_score, recall_score, accuracy_score
 from tensorflow.keras.utils import plot_model
-
-y_test_arg=np.argmax(y_test,axis=1)
-Y_pred = np.argmax(prediction,axis=1)
-print(confusion_matrix(y_test_arg, Y_pred)) #y軸事實 x軸預測
+print(sklearn.metrics.confusion_matrix(y_test,np.argmax(prediction, axis = 1), labels=None, sample_weight=None))
+print(sklearn.metrics.classification_report (y_test, np.argmax(prediction, axis = 1)))
+# y_test_arg=np.argmax(y_test,axis=1)
+# Y_pred = model.predict(X_test)
+# print(confusion_matrix(y_test_arg, Y_pred)) #y軸事實 x軸預測
 # %%
-from sklearn.metrics import classification_report
-print(classification_report(y_test_arg, Y_pred)) 
+# from sklearn.metrics import classification_report
+# print(classification_report(y_test_arg, Y_pred)) 
 # model.load_weights("weights.best.hdf5")
 # model.compile(optimizer="adam", loss='sparse_categorical_crossentropy', metrics=["accuracy"])
 # scores = model.evaluate(X_test, y_test)
