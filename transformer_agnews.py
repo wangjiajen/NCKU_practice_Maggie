@@ -17,7 +17,8 @@ from tensorflow.keras.callbacks import ModelCheckpoint, EarlyStopping
 from tensorflow.keras.utils import to_categorical
 
 from transformer import TransformerBlock, TokenAndPositionEmbedding
-
+import os
+os.environ["CUDA_VISIBLE_DEVICES"] = "1"
 # In[]
 data = pd.read_csv('/home/u108029050/m/train.csv')
 testdata = pd.read_csv('/home/u108029050/m/test.csv')
@@ -41,20 +42,29 @@ y_testdata = testdata['ClassIndex'].apply(lambda x: x-1).values # Class labels n
 maxlen = X_data.map(lambda x: len(x.split())).max()
 data.head()
 
-# In[]
-vocab_size = 10000 # arbitrarily chosen
-maxlen = 100
+# %%
+# y_train = to_categorical(y_train,4)
+# y_test = to_categorical(y_test,4)
+max_words = 10000 # 僅考慮資料集中的前10000個單詞
+maxlen = 100 # 100個文字後切斷評論
 # Create and Fit tokenizer
-tok = Tokenizer(num_words=vocab_size)
-tok.fit_on_texts(X_data.values)
 
-# Tokenize data
+tok = Tokenizer(num_words=max_words) # 實例化一個只考慮最常用10000詞的分詞器
+tok.fit_on_texts(X_data.values) # 建構單詞索引
+# vocab_size = len(tok.word_index) + 1
+
+# 將文字轉成整數list的序列資料
 X_data = tok.texts_to_sequences(X_data)
 x_testdata = tok.texts_to_sequences(x_testdata)
 
 # Pad data
-X_train = keras.preprocessing.sequence.pad_sequences(X_data, maxlen=maxlen)
-x_test = keras.preprocessing.sequence.pad_sequences(x_testdata, maxlen=maxlen)
+X_data = keras.preprocessing.sequence.pad_sequences(X_data, maxlen=maxlen)
+x_testdata = keras.preprocessing.sequence.pad_sequences(x_testdata, maxlen=maxlen)
+
+word_index = tok.word_index #單詞和數字的字典
+print('Found %s unique tokens' % len(word_index))
+# print(len(X_train), "Training sequences")
+# print(len(x_test), "Validation sequences")
 
 # %%
 print(X_data.shape)
@@ -77,7 +87,7 @@ num_heads = 2  # Number of attention heads
 ff_dim = 100  # Hidden layer size in feed forward network inside transformer
 
 inputs = layers.Input(shape=(maxlen,))
-embedding_layer = TokenAndPositionEmbedding(maxlen, vocab_size, embed_dim)
+embedding_layer = TokenAndPositionEmbedding(maxlen, max_words, embed_dim)
 x = embedding_layer(inputs)
 transformer_block = TransformerBlock(embed_dim, num_heads, ff_dim)
 x = transformer_block(x)
@@ -101,16 +111,25 @@ print(y_val.shape)
 np.random.seed(42)
 tf.random.set_seed(42)
 # In[]
-model.compile(optimizer="adam", loss="categorical_crossentropy", metrics=["accuracy"])
-history=model.fit(X_train, y_train, batch_size=512, epochs=10, validation_split=0.2)
+model.compile(optimizer="adam", loss="sparse_categorical_crossentropy", metrics=["accuracy"])
+EPOCHS = 10
+filepath="transformer_agnews.best.hdf5"
+checkpoint= tf.keras.callbacks.ModelCheckpoint(
+     filepath,
+     monitor='val_loss',
+     mode='min',
+     verbose=1,
+     save_best_only=True)
+callbacks_list = [checkpoint]
+model.fit(X_train, y_train, batch_size=512, epochs=EPOCHS, validation_data=(X_val, y_val), callbacks=callbacks_list)
 
 # In[]
-history.history
-scores = model.evaluate(x_test, y_test)
+model.load_weights("transformer_agnews.best.hdf5")
+scores = model.evaluate(X_test, y_test)
 print("\n%s: %.2f%%" % (model.metrics_names[1], scores[1]*100))
 
 # In[]
-prediction = model.predict(x_test)
+prediction = model.predict(X_test)
 labels = ['World News', 'Sports News', 'Business News', 'Science-Technology News']
 for i in range(10,40,4):
     print(testdata['summary'].iloc[i][:50], "...")
@@ -118,13 +137,11 @@ for i in range(10,40,4):
     print("predicted category: ",labels[np.argmax(prediction[i])])
 
 # In[]
+
+import sklearn
 from sklearn.metrics import confusion_matrix, precision_score, recall_score, accuracy_score
 from tensorflow.keras.utils import plot_model
+print(sklearn.metrics.confusion_matrix(y_test,np.argmax(prediction, axis = 1), labels=None, sample_weight=None))
+print(sklearn.metrics.classification_report (y_test, np.argmax(prediction, axis = 1)))# %%
 
-y_test_arg=np.argmax(y_test,axis=1)
-Y_pred = np.argmax(prediction,axis=1)
-print(confusion_matrix(y_test_arg, Y_pred)) #y軸事實 x軸預測
-
-from sklearn.metrics import classification_report
-print(classification_report(y_test_arg, Y_pred))
 # %%
