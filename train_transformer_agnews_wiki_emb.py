@@ -13,7 +13,7 @@ os.environ["CUDA_VISIBLE_DEVICES"] = "1"
 #In[]
 max_words = 10000
 maxlen, word_index, X_train, y_train, X_val, y_val, testdata, X_test, y_test = preprocess(
-    max_words)
+    max_words=10000)
 
 embedding_index = {}
 f = open('wiki.txt')
@@ -73,7 +73,7 @@ checkpoint = tf.keras.callbacks.ModelCheckpoint(filepath,
                                                 mode='min',
                                                 verbose=1,
                                                 save_best_only=True,
-                                                save_weights_only=False)
+                                                save_weights_only=True)
 callbacks_list = [checkpoint]
 model.fit(X_train,
           y_train,
@@ -81,4 +81,4 @@ model.fit(X_train,
           epochs=1,
           validation_data=(X_val, y_val),
           callbacks=callbacks_list)
-model.save(filepath)
+model.save_weights("transformer_agnews_wiki_em.best.h5")
