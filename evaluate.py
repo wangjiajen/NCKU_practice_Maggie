@@ -15,8 +15,8 @@ os.environ["CUDA_VISIBLE_DEVICES"] = "1"
 from preprocessing import preprocess
 
 maxlen, word_index, X_train, y_train, X_val, y_val, testdata, X_test, y_test = preprocess(
-    max_words=10000)
-
+)
+print("X_train set:", X_train.shape)
 from transformer import TransformerBlock, TokenAndPositionEmbedding
 #In[]
 
@@ -69,17 +69,8 @@ model.summary()
 from tensorflow import keras
 from keras_bert import get_custom_objects
 
-model.compile(optimizer="adam",
-              loss='sparse_categorical_crossentropy',
-              metrics=["accuracy"])
 model_path = "transformer_agnews_wiki_em.best.h5"
-model = model.load_weights(model_path,
-                           custom_objects={
-                               'TransformerBlock':
-                               TransformerBlock,
-                               'TokenAndPositionEmbedding':
-                               TokenAndPositionEmbedding
-                           })
+model.load_weights(model_path, by_name=False)
 model.compile(optimizer="adam",
               loss='sparse_categorical_crossentropy',
               metrics=["accuracy"])
