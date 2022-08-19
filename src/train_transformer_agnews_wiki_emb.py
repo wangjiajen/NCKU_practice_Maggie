@@ -64,9 +64,6 @@ model.summary()
 np.random.seed(42)
 tf.random.set_seed(42)
 
-model.compile(optimizer="adam",
-              loss='sparse_categorical_crossentropy',
-              metrics=["accuracy"])
 filepath = "transformer_agnews_wiki_em.best.h5"
 checkpoint = tf.keras.callbacks.ModelCheckpoint(filepath,
                                                 monitor='val_loss',
